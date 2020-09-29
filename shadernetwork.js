@@ -47,6 +47,8 @@ export class ShaderNetwork extends DataBlock {
     this._regen = true;
   }
 
+  /*helpers for data api*/
+
   _on_flag_resort() {
     console.log("material shader resort");
     this._regen = 1;
@@ -64,7 +66,7 @@ export class ShaderNetwork extends DataBlock {
     this._regen = false;
 
     let gen = new ShaderGenerator(scene);
-    
+
     gen.generate(this.graph);
     let shader = gen.genShader();
 
