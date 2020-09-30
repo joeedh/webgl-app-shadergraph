@@ -518,6 +518,7 @@ export class OutputNode extends ShaderNode {
   static nodedef() {return {
     category  : "Outputs",
     uiname    : "Output",
+    name      : "output",
     inputs    : {
       surface : new ClosureSocket()
     }
@@ -556,6 +557,7 @@ ${gen.getSocketName(this.outputs.surface)} = cl;
   static nodedef() {return {
     category  : "Shaders",
     uiname    : "Diffuse",
+    name      : "diffuse",
     inputs    : {
       color     : new RGBASocket(undefined, undefined, [0.8, 0.8, 0.8, 1.0]),
       roughness : new FloatSocket(),
@@ -594,6 +596,7 @@ export class GeometryNode extends ShaderNode {
   static nodedef() {return {
     category   : "Inputs",
     uiname     : "Geometry",
+    name       : "geometry",
     outputs    : {
       position : new Vec3Socket(),
       normal   : new Vec3Socket(),

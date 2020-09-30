@@ -75,6 +75,7 @@ export class ShaderNetwork extends DataBlock {
 
   static nodedef() {return {
     uiname : "Shader Network",
+    name   : "shadernetwork",
     inputs  : {},
     outputs : {
       onTopologyChange : new DependSocket("onTopologyChange")
