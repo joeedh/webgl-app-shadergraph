@@ -3,7 +3,15 @@ import {Graph, Node, NodeSocketType, NodeFlags, SocketFlags} from '../core/graph
 import {nstructjs} from '../path.ux/scripts/pathux.js';
 let STRUCT = nstructjs.STRUCT;
 
-import {DependSocket, Vec3Socket, Vec4Socket, Matrix4Socket, FloatSocket} from "../core/graphsockets.js";
+import {
+  DependSocket,
+  Vec3Socket,
+  Vec4Socket,
+  Matrix4Socket,
+  FloatSocket,
+  IntSocket,
+  BoolSocket
+} from "../core/graphsockets.js";
 import {UIBase} from '../path.ux/scripts/core/ui_base.js';
 import {Container} from '../path.ux/scripts/core/ui.js';
 import {Vector2, Vector3, Vector4, Quat, Matrix4} from '../util/vectormath.js';
@@ -45,12 +53,100 @@ export class ShaderNetwork extends DataBlock {
     this.graph = new Graph();
     this.graph.onFlagResort = this._on_flag_resort.bind(this);
     this._regen = true;
+
+    this._last_update_hash = undefined; //is set by RenderEngine code
+
+    this.usedNodes = [];
+
+    this.updateHash = 0;
+    this.usedNodes = new Set(); //pruned list of nodes that contribute to shader code
   }
 
+  getUsedNodes() {
+    let out;
+
+    for (let node of this.graph.nodes) {
+      if (node instanceof OutputNode) {
+        out = node;
+        break;
+      }
+    }
+
+    let ret = new Set();
+
+    let rec = (n) => {
+      if (ret.has(n)) {
+        return;
+      }
+
+      ret.add(n);
+
+      for (let k in n.inputs) {
+        let sock = n.inputs[k];
+
+        for (let e of sock.edges) {
+          rec(e.node);
+        }
+      }
+    }
+
+    if (out) {
+      rec(out);
+    }
+
+    return ret;
+  }
+
+  calcUpdateHash() {
+    let graph = this.graph;
+
+    let hash = new util.HashDigest();
+    for (let node of this.usedNodes) {
+      hash.add(node.graph_id);
+
+      for (let i=0; i<2; i++) {
+        let socks = i ? node.outputs : node.inputs;
+
+        for (let k in socks) {
+          let sock = socks[k];
+
+          if (sock.edges.length === 0) {
+            if (sock instanceof FloatSocket) {
+              hash.add(sock.value);
+            } else if (sock instanceof IntSocket) {
+              hash.add(sock.value);
+            } else if (sock instanceof  BoolSocket) {
+              hash.add(sock.value*i);
+            } else if (sock instanceof Vec3Socket) {
+              hash.add(sock.value[0]*1000.0);
+              hash.add(sock.value[1]*1000.0);
+              hash.add(sock.value[2]*1000.0);
+            } else if (sock instanceof Vec4Socket) {
+              hash.add(sock.value[0]*1000.0);
+              hash.add(sock.value[1]*1000.0);
+              hash.add(sock.value[2]*1000.0);
+              hash.add(sock.value[3]*1000.0);
+            }
+          } else {
+            for (let e of sock.edges) {
+              hash.add(e.graph_id);
+            }
+          }
+        }
+      }
+    }
+
+    return hash.get();
+  }
   /*helpers for data api*/
 
   _on_flag_resort() {
     console.log("material shader resort");
+    this.usedNodes = this.getUsedNodes();
+    this._regen = 1;
+  }
+
+  flagRegen() {
     this._regen = 1;
   }
 
@@ -59,15 +155,16 @@ export class ShaderNetwork extends DataBlock {
     //this.graph.dataLink(getblock, getblock_addUser);
   }
 
-  generate(scene) {
+  generate(scene, rlights) {
     if (scene === undefined) {
       throw new Error("scene cannot be undefined");
     }
     this._regen = false;
+    this.usedNodes = this.getUsedNodes();
 
     let gen = new ShaderGenerator(scene);
 
-    gen.generate(this.graph);
+    gen.generate(this.graph, rlights);
     let shader = gen.genShader();
 
     return shader;

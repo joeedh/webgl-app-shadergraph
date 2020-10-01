@@ -37,18 +37,18 @@ export class LightGen {
     for (let gen of LightGenerators) {
       let i = 0;
 
-      for (let light of scene.lights.renderable) {
-        if (light.data.type != gen.lightType) {
+      for (let k in renderlights) {
+        let rlight = renderlights[k];
+        let light = rlight.light;
+
+        if (light.data.type !== gen.lightType) {
           continue;
         }
 
-        let shadowmap = undefined;
-        let rlight = undefined;
+        let m = light.outputs.matrix.getValue().$matrix;
+        let dir = new Vector3([m.m31, m.m32, m.m33]);
 
-        if (renderlights !== undefined && light.lib_id in renderlights) {
-          rlight = renderlights[light.lib_id];
-          shadowmap = rlight.shadowmap;
-        }
+        let shadowmap = rlight.shadowmap;
         let uname = gen.uniformName + `[${i}]`;
         i++;
 
@@ -63,6 +63,8 @@ export class LightGen {
             //break;
             case LightTypes.SUN:
             //break;
+              uniforms[uname + ".dir"] = dir;
+              //yes, the pass through is deliberate
             case LightTypes.POINT:
             default:
               r[0] = (util.random()-0.5)*2.0;
@@ -91,26 +93,29 @@ export class LightGen {
     }
   }
 
-  genDefines(scene) {
+  genDefines(rlights) {
     let tot = 0;
 
-    for (let light of scene.lights.renderable) {
-      if (light.data.type == this.lightType) {
+    for (let k in rlights) {
+      let rlight = rlights[k];
+      let light = rlight.light;
+
+      if (light.data.type === this.lightType) {
         tot++;
       }
     }
 
-    if (tot == 0) return '';
+    if (tot === 0) return '';
 
     return `#define ${this.totname} ${tot}\n`;
   }
 
 
-  static genDefines(scene) {
+  static genDefines(rlights) {
     let ret = '';
 
     for (let gen of LightGenerators) {
-      ret += gen.genDefines(scene) + "\n";
+      ret += gen.genDefines(rlights) + "\n";
     }
 
     return ret;
@@ -223,6 +228,77 @@ export let PointLightCode = new LightGen({
   }
 });
 LightGen.register(PointLightCode);
+
+
+export let SunLightCode = new LightGen({
+  lightType : LightTypes.SUN,
+  name : "SUNLIGHT",
+  uniformName : "SUNLIGHTS",
+  totname : "MAXSLIGHT",
+  pre : `
+  #if defined(MAXSLIGHT) && MAXSLIGHT > 0
+    #define HAVE_SUNLIGHT
+    //define HAVE_SHADOW
+    
+    struct SUNLight {
+      vec3 co;
+      vec3 dir;
+      float power;
+      float radius; //soft shadow radius
+      vec3 color;
+      float distance; //falloff distance
+#ifdef HAVE_SHADOW
+      samplerCubeShadow shadow;
+#endif
+      float shadow_near;
+      float shadow_far;
+    };
+    
+    uniform SUNLight SUNLIGHTS[MAXSLIGHT];
+  #endif
+  `,
+
+  //inputs: CLOSURE CO NORMAL COLOR (for BRDF)
+  lightLoop : `
+  #ifdef HAVE_SUNLIGHT
+    for (int li=0; li<MAXSLIGHT; li++) {
+      vec3 lvec = SUNLIGHTS[li].dir;
+      vec3 ln = normalize(lvec);
+      
+      BRDF;
+
+      vec3 f = brdf_out * dot(ln, NORMAL);
+      
+      float energy = SUNLIGHTS[li].power;
+     
+#ifdef HAVE_SHADOW
+      float z = 1.0/length(lvec) - 1.0/SUNLIGHTS[li].shadow_near;
+      z /= 1.0/SUNLIGHTS[li].shadow_far - 1.0/SUNLIGHTS[li].shadow_near;
+      
+      z = length(lvec);
+      
+      vec4 sp = vec4(lvec, z);
+      
+      float shadow = texture(SUNLIGHTS[li].shadow, sp);
+#else
+      float shadow = 1.0;
+#endif
+  
+      CLOSURE.light += f * SUNLIGHTS[li].color * energy * shadow;
+      //CLOSURE.light += vec3(shadow, shadow, shadow);
+    }
+  #endif
+  `,
+
+  defines : [
+    'MAXSLIGHT'
+  ],
+
+  getLightVector : function(co, i) {
+    return `SUNLIGHTS${i}.dir`;
+  }
+});
+LightGen.register(SunLightCode);
 
 export class BRDFGen {
   constructor(code) {

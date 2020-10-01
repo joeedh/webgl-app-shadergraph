@@ -122,14 +122,14 @@ export const ShaderContext = {
 };
 
 export class ShaderGenerator {
-  update(gl, scene, graph) {
+  update(gl, scene, graph, engine) {
     if (this._regen) {
       this._regen = false;
 
       this.scene = scene;
       this.graph = graph;
 
-      let shaderdef = this.generate(graph);
+      let shaderdef = this.generate(graph, engine);
       this.glshader = shaderdef.compile(gl);
     }
   }
@@ -269,7 +269,7 @@ export class ShaderGenerator {
     this.buf += s;
   }
 
-  generate(graph) {
+  generate(graph, rlights) {
     this.graph = graph;
     graph.sort();
 
@@ -388,15 +388,7 @@ precision highp sampler2DShadow;
     let defines = '';
 
 
-    defines += LightGen.genDefines(this.scene);
-
-    for (let light of this.scene.lights.renderable) {
-      switch (light.data.type) {
-        case LightTypes.POINT:
-
-          break;
-      }
-    }
+    defines += LightGen.genDefines(rlights);
 
     let varyings = ShaderFragments.VARYINGS;
 
