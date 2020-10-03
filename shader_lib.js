@@ -340,7 +340,7 @@ export let ShaderFragments = {
   ATTRIBUTES : `
 attribute vec3 position;
 attribute vec3 normal;
-attribute vec2 uv;
+MULTILAYER_UV_DECLARE
 attribute vec4 color;
 attribute float id;
 `,
@@ -360,7 +360,6 @@ uniform float uSample;
 
 `,
   VARYINGS : `
-    varying vec2 vUv;
     varying vec4 vColor;
     varying vec3 vNormal;
     varying float vId;

@@ -141,7 +141,6 @@ export class ShaderNetwork extends DataBlock {
   /*helpers for data api*/
 
   _on_flag_resort() {
-    console.log("material shader resort");
     this.usedNodes = this.getUsedNodes();
     this._regen = 1;
   }

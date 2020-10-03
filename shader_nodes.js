@@ -11,6 +11,7 @@ import {AbstractGraphClass} from '../core/graph_class.js';
 import {ShaderFragments, LightGen, DiffuseBRDF} from './shader_lib.js';
 import {Light, LightTypes} from '../light/light.js';
 import {loadShader} from "../shaders/shaders.js";
+import {ShaderProgram} from "../core/webgl.js";
 
 export {ClosureGLSL, PointLightCode} from './shader_lib.js';
 
@@ -152,7 +153,7 @@ export class ShaderGenerator {
     p[ShaderContext.LOCALCO] = 'vLocalCo';
     p[ShaderContext.GLOBALCO] = 'vGlobalCo';
     p[ShaderContext.NORMAL] = 'vNormal';
-    p[ShaderContext.UV] = 'vUv';
+    p[ShaderContext.UV] = 'vuv';
     p[ShaderContext.COLOR] = 'vColor';
     p[ShaderContext.TANGENT] = 'vTangent';
     p[ShaderContext.ID] = 'vId';
@@ -273,6 +274,8 @@ export class ShaderGenerator {
     this.graph = graph;
     graph.sort();
 
+    let glsl300 = true; //XXX
+
     this.vertex = `#version 300 es
 #define attribute in
 #define varying out
@@ -295,7 +298,7 @@ precision highp sampler2DShadow;
 
       vColor = color;
       vNormal = normal;
-      vUv = uv;
+      ${ShaderProgram.multilayerVertexCode("uv")}
       vId = object_id;        
       
       vGlobalCo = (objectMatrix * vec4(position, 1.0)).xyz;
@@ -304,6 +307,9 @@ precision highp sampler2DShadow;
     `
 
     this.buf = '';
+
+    let uvdecl = ShaderProgram.multilayerAttrDeclare("uv", "vec2", false, glsl300);
+    this.vertex = this.vertex.replace(/MULTILAYER_UV_DECLARE/, uvdecl);
 
     //find output node
     let output = undefined;
@@ -427,6 +433,9 @@ precision highp samplerCubeShadow;
     `
 
     this.fragment = script;
+
+    uvdecl = ShaderProgram.multilayerAttrDeclare("uv", "vec2", true, glsl300);
+    this.fragment = this.fragment.replace(/MULTILAYER_UV_DECLARE/, uvdecl);
 
     return this;
   }
@@ -571,7 +580,6 @@ DiffuseNode.STRUCT = STRUCT.inherit(DiffuseNode, ShaderNode, 'shader.DiffuseNode
 `;
 nstructjs.manager.add_class(DiffuseNode);
 ShaderNetworkClass.register(DiffuseNode);
-
 
 export class GeometryNode extends ShaderNode {
   constructor() {
