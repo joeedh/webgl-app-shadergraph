@@ -1,6 +1,9 @@
 import {Light, LightTypes} from '../light/light.js';
 import {Vector3, Vector4, Matrix4, Vector2, Quat} from '../util/vectormath.js';
 import * as util from '../util/util.js';
+import * as webgl from '../core/webgl.js';
+
+import * as bluenoise from './bluenoise_mask.js';
 
 export let ClosureGLSL = `
 struct Closure {
@@ -412,3 +415,110 @@ Closure floattoclosure(float c) {
 
 `
 };
+
+let bluemask = {
+  tex : undefined,
+  gl : undefined,
+  shaderPre : `
+  uniform sampler2D blueMask;
+  uniform vec2 blueUVOff;
+  uniform vec2 blueUVScale;
+  
+  /*
+  float _hashrand(float f) {
+    f = fract((f + f*0.1 + f*1000.0)*sqrt(3.0));
+    return fract(1.0 / (f*0.00001 + 0.000001));
+  }*/
+  
+  vec4 sampleBlue(vec2 uv) {
+    return texture2D(blueMask, uv*blueUVScale + blueUVOff);
+  }
+    
+  `
+};
+
+export function getBlueMaskDef() {
+  return bluemask;
+}
+
+/*
+* Get a four-component blue noise mask.
+* Each component is blue-corralated with the others,
+* so it's four seperate but related masks.
+*
+* Use each component for different shading parameters,
+* e.g. one for AO, one for subsurface scattering, etc, etc
+* */
+export function getBlueMask(gl) {
+  if (!gl) {
+    throw new Error("gl cannot be undefined");
+    return undefined;
+  }
+
+  if (bluemask.gl === gl) {
+    return bluemask.tex;
+  }
+
+  bluemask.gl = gl;
+  bluemask.tex = new webgl.Texture();
+  bluemask.tex.texture = gl.createTexture(gl.TEXTURE_2D);
+
+  //convert to float data
+  //
+  let mask = bluenoise.cmyk;
+  let data = mask.mask;
+  let size = mask.dimen;
+  let comps = mask.components;
+  let tot = comps*size*size;
+
+  let tex = new Float32Array(size*size*4);
+
+  let maxelem = mask.bytesPerPixel / mask.components;
+  maxelem = (1<<(maxelem*8))-1;
+
+  if (maxelem !== 255) {
+    throw new Error(""+maxelem);
+  }
+
+  for (let i=0; i<size*size; i++) {
+    let idx1 = i*comps;
+    let idx2 = i*4;
+
+    if (comps < 3) {
+      tex[idx2+3] = 1.0;
+    }
+
+    for (let j=0; j<comps; j++) {
+      let f = data[idx1+j]/maxelem;
+      tex[idx2+j] = f;
+    }
+  }
+
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, bluemask.tex.texture);
+  bluemask.tex.texImage2D(gl, gl.TEXTURE_2D, 0, gl.RGBA32F, ~~size, ~~size, 0, gl.RGBA, gl.FLOAT, tex);
+  //gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ~~size, ~~size, 0, gl.RGBA, gl.FLOAT, null);
+  //bluemask.tex.load(gl, size, size, tex);
+
+  bluemask.tex.texParameteri(gl, gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  bluemask.tex.texParameteri(gl, gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  bluemask.tex.texParameteri(gl, gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+  bluemask.tex.texParameteri(gl, gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+
+  bluemask.tex.width = bluemask.tex.height = size;
+
+  return bluemask.tex;
+}
+
+let _rand = new util.MersenneRandom();
+
+export function setBlueUniforms(uniforms, viewport_size, bluetex, uSample=0.0) {
+  let size = viewport_size;
+
+  _rand.seed(uSample);
+
+  uniforms.blueUVOff = [_rand.random(), _rand.random()];
+  uniforms.blueMask = bluetex;
+  uniforms.blueUVScale = [size[0]/bluetex.width, size[1]/bluetex.height];
+
+}
