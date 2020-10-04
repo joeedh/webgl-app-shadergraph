@@ -336,8 +336,13 @@ export let ShaderFragments = {
     }
   `,
   AMBIENT : ` //inputs: CLOSURE
-    CLOSURE.light += CLOSURE.diffuse*texture2D(passAO, gl_FragCoord.xy/viewportSize).rgb*ambientColor*ambientPower;
+    {
+    float aopass1 = texture2D(passAO, gl_FragCoord.xy/viewportSize)[0];
+    vec3 aopass = vec3(aopass1, aopass1, aopass1);
+    
+    CLOSURE.light += CLOSURE.diffuse*aopass*ambientColor*ambientPower;
     //CLOSURE.light = ambientColor;
+    }
   `,
   CLOSUREDEF : ClosureGLSL,
   ATTRIBUTES : `
