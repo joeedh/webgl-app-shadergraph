@@ -65,9 +65,9 @@ export class LightGen {
             case LightTypes.AREA_RECT:
             //break;
             case LightTypes.SUN:
-            //break;
+              //break;
               uniforms[uname + ".dir"] = dir;
-              //yes, the pass through is deliberate
+            //yes, the pass through is deliberate
             case LightTypes.POINT:
             default:
               r[0] = (util.random()-0.5)*2.0;
@@ -270,7 +270,7 @@ export let SunLightCode = new LightGen({
       
       BRDF;
 
-      vec3 f = brdf_out * dot(ln, NORMAL);
+      vec3 f = brdf_out * max(dot(ln, NORMAL), 0.0);
       
       float energy = SUNLIGHTS[li].power;
      
@@ -336,6 +336,7 @@ export let ShaderFragments = {
     }
   `,
   AMBIENT : ` //inputs: CLOSURE
+#ifdef WITH_AO
     {
     float aopass1 = texture2D(passAO, gl_FragCoord.xy/viewportSize)[0];
     vec3 aopass = vec3(aopass1, aopass1, aopass1);
@@ -343,6 +344,9 @@ export let ShaderFragments = {
     CLOSURE.light += CLOSURE.diffuse*aopass*ambientColor*ambientPower;
     //CLOSURE.light = ambientColor;
     }
+#else
+    CLOSURE.light += CLOSURE.diffuse*ambientColor*ambientPower;
+#endif
   `,
   CLOSUREDEF : ClosureGLSL,
   ATTRIBUTES : `

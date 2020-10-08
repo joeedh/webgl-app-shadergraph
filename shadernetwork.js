@@ -154,7 +154,7 @@ export class ShaderNetwork extends DataBlock {
     //this.graph.dataLink(getblock, getblock_addUser);
   }
 
-  generate(scene, rlights) {
+  generate(scene, rlights, defines="") {
     if (scene === undefined) {
       throw new Error("scene cannot be undefined");
     }
@@ -163,7 +163,7 @@ export class ShaderNetwork extends DataBlock {
 
     let gen = new ShaderGenerator(scene);
 
-    gen.generate(this.graph, rlights);
+    gen.generate(this.graph, rlights, defines);
     let shader = gen.genShader();
 
     return shader;

@@ -270,7 +270,7 @@ export class ShaderGenerator {
     this.buf += s;
   }
 
-  generate(graph, rlights) {
+  generate(graph, rlights, defines="") {
     this.graph = graph;
     graph.sort();
 
@@ -282,7 +282,9 @@ export class ShaderGenerator {
 precision highp float;
 precision highp samplerCubeShadow;
 precision highp sampler2DShadow;
-
+    
+    ${defines}
+    
     ${ShaderFragments.CLOSUREDEF}
     ${ShaderFragments.UNIFORMS}
     ${ShaderFragments.ATTRIBUTES}
@@ -391,8 +393,6 @@ precision highp sampler2DShadow;
     }
 
     uniforms += LightGen.pre();
-    let defines = '';
-
 
     defines += LightGen.genDefines(rlights);
 
