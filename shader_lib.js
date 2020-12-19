@@ -472,6 +472,8 @@ export function getBlueMask(gl) {
   bluemask.tex = new webgl.Texture();
   bluemask.tex.texture = gl.createTexture(gl.TEXTURE_2D);
 
+  console.log("creating blue noise mask");
+
   //convert to float data
   //
   let mask = bluenoise.cmyk;
