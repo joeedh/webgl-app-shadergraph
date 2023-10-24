@@ -70,7 +70,7 @@ export class MathNode extends ShaderNode {
     container.prop("mathFunc");
   }
 
-  static defineAPI(nstruct) {
+  static graphDefineAPI(api, nstruct) {
     nstruct.enum("mathFunc", "mathFunc", MathNodeFuncs, "Function", "Math function to use");
   }
 
