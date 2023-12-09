@@ -58,6 +58,14 @@ ShadowSettings {
 nstructjs.register(ShadowSettings);
 
 export class ShaderNetwork extends DataBlock {
+  static STRUCT = nstructjs.inlineRegister(this, `
+ShaderNetwork {
+  graph    : graph.Graph;
+  flag     : int;
+  shadow   : ShadowSettings;
+}
+  `);
+
   constructor() {
     super();
 
@@ -225,14 +233,7 @@ export class ShaderNetwork extends DataBlock {
   }
 };
 
-ShaderNetwork.STRUCT = STRUCT.inherit(ShaderNetwork, DataBlock) + `
-  graph    : graph.Graph;
-  flag     : int;
-  shadow   : ShadowSettings;
-}
-`;
 DataBlock.register(ShaderNetwork);
-nstructjs.register(ShaderNetwork);
 
 export function makeDefaultShaderNetwork() {
   let sn = new ShaderNetwork();
