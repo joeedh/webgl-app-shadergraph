@@ -493,7 +493,6 @@ precision highp samplerCubeShadow;
         let gltex = image.getGlTex(gl);
 
         uniforms['sampler_' + image.lib_id] = gltex;
-        gltex.texture_slot = slot++;
       }
 
       for (let node of graph.sortlist) {
